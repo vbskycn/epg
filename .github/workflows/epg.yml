@@ -17,7 +17,7 @@ jobs:
             branch: 112114
             sleep: 0s
           - url: https://gitee.com/Black_crow/xmlgz/raw/master/e.xml.gz
-            branch: 112114
+            branch: erw
             sleep: 30s
           #- url: http://epg.51zmt.top:8000/e.xml
           #  branch: 51zmt
