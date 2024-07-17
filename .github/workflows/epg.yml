@@ -17,7 +17,7 @@ jobs:
             branch: 112114
             sleep: 0s
           - url: https://gitee.com/Black_crow/xmlgz/raw/master/e.xml.gz
-            branch: erw
+            branch: 112114
             sleep: 30s
           #- url: http://epg.51zmt.top:8000/e.xml
           #  branch: 51zmt
@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: download files
         run: |
-          wget https://raw.githubusercontent.com/${{ github.repository }}/112114/md5.txt -O md5.txt
+          wget https://raw.githubusercontent.com/${{ github.repository }}/${{ matrix.branch }}/md5.txt -O md5.txt
           url="${{ matrix.url }}"
           if [[ "$url" == *".gz" ]]; then
             echo "url is end with gz"
