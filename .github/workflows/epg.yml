@@ -19,9 +19,9 @@ jobs:
           - url: https://gitee.com/Black_crow/xmlgz/raw/master/e.xml.gz
             branch: erw
             sleep: 30s
-          - url: http://epg.51zmt.top:8000/e.xml
-            branch: 51zmt
-            sleep: 60s
+          #- url: http://epg.51zmt.top:8000/e.xml
+          #  branch: 51zmt
+          #  sleep: 60s
 
     steps:
       - name: download files
