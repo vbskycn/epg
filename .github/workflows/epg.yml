@@ -138,17 +138,29 @@ jobs:
       - name: Prepare static files
         if: steps.check_updates.outputs.has_updates == 'true'
         run: |
-          # 复制edgeone.json到工作目录
-          cp edgeone.json gh-pages/ || echo "edgeone.json copied to gh-pages/"
+          # 显示当前目录内容
+          echo "Current directory contents:"
+          ls -la
           
           # 创建gh-pages目录
           mkdir -p gh-pages
+          echo "Created gh-pages directory"
+          
+          # 复制edgeone.json到gh-pages目录
+          cp edgeone.json gh-pages/ || echo "Failed to copy edgeone.json"
+          echo "edgeone.json copy result: $?"
           
           # 复制logo目录
-          cp -r logo gh-pages/
+          cp -r logo gh-pages/ || echo "Failed to copy logo directory"
+          echo "logo copy result: $?"
           
           # 创建XML和JSON目录
           mkdir -p gh-pages/xml gh-pages/json
+          echo "Created xml and json directories"
+          
+          # 显示gh-pages目录内容
+          echo "gh-pages directory contents:"
+          ls -la gh-pages/
           
           # 从releases下载最新的XML和JSON文件
           latest_tag=${{ steps.check_updates.outputs.latest_tag }}
@@ -234,8 +246,17 @@ jobs:
           git rm -rf . || true
           git clean -fxd || true
           
+          # 显示gh-pages目录内容
+          echo "gh-pages directory contents before copy:"
+          ls -la gh-pages/
+          
           # 复制新文件到当前目录（不复制gh-pages目录本身）
           cp -r gh-pages/* . 2>/dev/null || true
+          echo "Copy result: $?"
+          
+          # 显示当前目录内容
+          echo "Current directory contents after copy:"
+          ls -la
           
           # 确保没有重复的gh-pages目录
           rm -rf gh-pages
