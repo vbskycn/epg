@@ -110,18 +110,14 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     permissions:
-      pages: write
-      id-token: write
-    # GitHub Pages deployment
+      contents: write
     
     steps:
-      - name: Checkout
+      - name: Checkout gh-pages branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
-          
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+          ref: gh-pages
+          path: gh-pages
         
       - name: Install tools
         run: |
@@ -143,24 +139,28 @@ jobs:
       - name: Prepare static files
         if: steps.check_updates.outputs.has_updates == 'true'
         run: |
-          mkdir -p public
+          # 清空gh-pages目录
+          rm -rf gh-pages/*
+          
           # 复制logo目录
-          cp -r logo public/
+          cp -r logo gh-pages/
+          
           # 创建XML和JSON目录
-          mkdir -p public/xml public/json
+          mkdir -p gh-pages/xml gh-pages/json
+          
           # 从releases下载最新的XML和JSON文件
-          # 获取最新的tag
-          latest_tag=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name')
+          latest_tag=${{ steps.check_updates.outputs.latest_tag }}
           if [ "$latest_tag" != "null" ] && [ "$latest_tag" != "" ]; then
             # 下载112114分支的文件
-            wget -O public/xml/112114.xml "https://github.com/${{ github.repository }}/releases/download/$latest_tag/112114.xml" || echo "Failed to download 112114.xml"
-            wget -O public/json/112114.json "https://github.com/${{ github.repository }}/releases/download/$latest_tag/112114.json" || echo "Failed to download 112114.json"
+            wget -O gh-pages/xml/112114.xml "https://github.com/${{ github.repository }}/releases/download/$latest_tag/112114.xml" || echo "Failed to download 112114.xml"
+            wget -O gh-pages/json/112114.json "https://github.com/${{ github.repository }}/releases/download/$latest_tag/112114.json" || echo "Failed to download 112114.json"
             # 下载erw分支的文件
-            wget -O public/xml/erw.xml "https://github.com/${{ github.repository }}/releases/download/$latest_tag/erw.xml" || echo "Failed to download erw.xml"
-            wget -O public/json/erw.json "https://github.com/${{ github.repository }}/releases/download/$latest_tag/erw.json" || echo "Failed to download erw.json"
+            wget -O gh-pages/xml/erw.xml "https://github.com/${{ github.repository }}/releases/download/$latest_tag/erw.xml" || echo "Failed to download erw.xml"
+            wget -O gh-pages/json/erw.json "https://github.com/${{ github.repository }}/releases/download/$latest_tag/erw.json" || echo "Failed to download erw.json"
           fi
+          
           # 创建简单的HTML索引页面
-          cat > public/index.html << 'EOF'
+          cat > gh-pages/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="zh-CN">
           <head>
@@ -216,7 +216,12 @@ jobs:
           </html>
           EOF
           
-      - name: Deploy to GitHub Pages
+      - name: Deploy to gh-pages branch
         if: steps.check_updates.outputs.has_updates == 'true'
-        id: deployment
-        uses: actions/deploy-pages@v4
+        run: |
+          cd gh-pages
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "Update EPG data and static files - ${{ steps.check_updates.outputs.latest_tag }}"
+          git push origin gh-pages
