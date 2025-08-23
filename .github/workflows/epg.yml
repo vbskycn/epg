@@ -168,11 +168,79 @@ jobs:
           echo "Recreating gh-pages directory..."
           mkdir -p gh-pages
           
-          # 复制edgeone.json
-          cp ../../edgeone.json gh-pages/ || echo "Failed to copy edgeone.json"
+          # 显示当前工作目录和可能的文件位置
+          echo "Current working directory: $(pwd)"
+          echo "Current directory contents:"
+          ls -la
+          echo ""
+          echo "Parent directory contents:"
+          ls -la ../
+          echo ""
+          echo "Grandparent directory contents:"
+          ls -la ../../
+          echo ""
           
-          # 复制logo目录
-          cp -r ../../logo gh-pages/ || echo "Failed to copy logo directory"
+          # 显示可能的edgeone.json位置
+          echo "Checking for edgeone.json in possible locations:"
+          ls -la ../../edgeone.json 2>/dev/null || echo "../../edgeone.json not found"
+          ls -la ../edgeone.json 2>/dev/null || echo "../edgeone.json not found"
+          ls -la edgeone.json 2>/dev/null || echo "edgeone.json not found"
+          
+          # 复制edgeone.json（尝试多个可能的路径）
+          echo "Attempting to copy edgeone.json..."
+          if cp ../../edgeone.json gh-pages/; then
+            echo "Successfully copied edgeone.json from ../../"
+          elif cp ../edgeone.json gh-pages/; then
+            echo "Successfully copied edgeone.json from ../"
+          elif cp edgeone.json gh-pages/; then
+            echo "Successfully copied edgeone.json from current directory"
+          else
+            echo "Failed to copy edgeone.json from all attempted paths"
+          fi
+          
+          # 显示logo目录的可能位置
+          echo "Checking for logo directory in possible locations:"
+          ls -la ../../logo 2>/dev/null || echo "../../logo not found"
+          ls -la ../logo 2>/dev/null || echo "../logo not found"
+          ls -la logo 2>/dev/null || echo "logo not found"
+          
+          # 复制logo目录（尝试多个可能的路径）
+          echo "Attempting to copy logo directory..."
+          if cp -r ../../logo gh-pages/; then
+            echo "Successfully copied logo directory from ../../"
+          elif cp -r ../logo gh-pages/; then
+            echo "Successfully copied logo directory from ../"
+          elif cp -r logo gh-pages/; then
+            echo "Successfully copied logo directory from current directory"
+          else
+            echo "Failed to copy logo directory from all attempted paths"
+          fi
+          
+          # 验证文件复制结果
+          echo "Verifying file copy results:"
+          echo ""
+          
+          # 检查edgeone.json
+          if [ -f "gh-pages/edgeone.json" ]; then
+            echo "✅ edgeone.json successfully copied to gh-pages/"
+            ls -la gh-pages/edgeone.json
+          else
+            echo "❌ edgeone.json NOT found in gh-pages/"
+          fi
+          echo ""
+          
+          # 检查logo目录
+          if [ -d "gh-pages/logo" ]; then
+            echo "✅ logo directory successfully copied to gh-pages/"
+            ls -la gh-pages/logo/
+          else
+            echo "❌ logo directory NOT found in gh-pages/"
+          fi
+          echo ""
+          
+          # 显示gh-pages目录的完整内容
+          echo "gh-pages directory complete contents:"
+          ls -la gh-pages/
           
           # 创建XML和JSON目录
           mkdir -p gh-pages/xml gh-pages/json
