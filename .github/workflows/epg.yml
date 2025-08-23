@@ -164,6 +164,9 @@ jobs:
           # 为XML文件添加正确的XML标头
           sed -i '1i<?xml version="1.0" encoding="UTF-8"?>' gh-pages/index.xml
           
+          # 复制edgeone.json配置文件
+          cp ../edgeone.json gh-pages/ || echo "edgeone.json not found in parent directory"
+          
           # 创建说明文件
           cat > gh-pages/README.md << 'EOF'
           # EPG 节目表静态文件
@@ -225,14 +228,18 @@ jobs:
           # 创建新的gh-pages分支
           git checkout -b gh-pages
           
-          # 清空所有文件（保留.git目录）
-          find . -mindepth 1 -not -path './.git*' -not -path './gh-pages*' -delete
+          # 完全清空当前目录（只保留.git目录）
+          git rm -rf . || true
+          git clean -fxd || true
           
           # 复制新文件到当前目录（不复制gh-pages目录本身）
           cp -r gh-pages/* . 2>/dev/null || true
           
           # 确保没有重复的gh-pages目录
           rm -rf gh-pages
+          
+          # 复制edgeone.json配置文件到根目录
+          cp ../edgeone.json . || echo "edgeone.json not found in parent directory"
           
           # 添加所有文件
           git add --all
