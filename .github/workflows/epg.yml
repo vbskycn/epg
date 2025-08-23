@@ -138,6 +138,9 @@ jobs:
       - name: Prepare static files
         if: steps.check_updates.outputs.has_updates == 'true'
         run: |
+          # 复制edgeone.json到工作目录
+          cp edgeone.json gh-pages/ || echo "edgeone.json copied to gh-pages/"
+          
           # 创建gh-pages目录
           mkdir -p gh-pages
           
@@ -164,8 +167,7 @@ jobs:
           # 为XML文件添加正确的XML标头
           sed -i '1i<?xml version="1.0" encoding="UTF-8"?>' gh-pages/index.xml
           
-          # 复制edgeone.json配置文件
-          cp ../edgeone.json gh-pages/ || echo "edgeone.json not found in parent directory"
+
           
           # 创建说明文件
           cat > gh-pages/README.md << 'EOF'
@@ -237,9 +239,6 @@ jobs:
           
           # 确保没有重复的gh-pages目录
           rm -rf gh-pages
-          
-          # 复制edgeone.json配置文件到根目录
-          cp ../edgeone.json . || echo "edgeone.json not found in parent directory"
           
           # 添加所有文件
           git add --all
