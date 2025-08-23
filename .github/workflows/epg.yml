@@ -146,6 +146,7 @@ jobs:
           
           # 复制logo目录
           cp -r logo gh-pages/
+          cp -r edgeone.json gh-pages/
           
           # 创建XML和JSON目录
           mkdir -p gh-pages/xml gh-pages/json
