@@ -1,4 +1,4 @@
-name: EPG
+name: EPG v2.0
 
 on:
   schedule:
@@ -165,6 +165,7 @@ jobs:
           git clean -fxd || true
           
           # 重新创建gh-pages目录并下载文件
+          echo "=== DEBUG: Starting file recreation process ==="
           echo "Recreating gh-pages directory..."
           mkdir -p gh-pages
           
@@ -241,6 +242,7 @@ jobs:
           # 显示gh-pages目录的完整内容
           echo "gh-pages directory complete contents:"
           ls -la gh-pages/
+          echo "=== DEBUG: File recreation process completed ==="
           
           # 创建XML和JSON目录
           mkdir -p gh-pages/xml gh-pages/json
