@@ -108,7 +108,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ contains(needs.build.result, 'success') }}
+    if: always()
     permissions:
       pages: write
       id-token: write
@@ -128,7 +128,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq wget
         
+      - name: Check for updates
+        id: check_updates
+        run: |
+          # 检查是否有新的releases
+          latest_tag=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name')
+          if [ "$latest_tag" != "null" ] && [ "$latest_tag" != "" ]; then
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+            echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+          else
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+          fi
+        
       - name: Prepare static files
+        if: steps.check_updates.outputs.has_updates == 'true'
         run: |
           mkdir -p public
           # 复制logo目录
@@ -204,5 +217,6 @@ jobs:
           EOF
           
       - name: Deploy to GitHub Pages
+        if: steps.check_updates.outputs.has_updates == 'true'
         id: deployment
         uses: actions/deploy-pages@v4
