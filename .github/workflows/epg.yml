@@ -158,61 +158,230 @@ jobs:
             wget -O gh-pages/json/erw.json "https://github.com/${{ github.repository }}/releases/download/$latest_tag/erw.json" || echo "Failed to download erw.json"
           fi
           
-          # 创建简单的HTML索引页面
+          # 创建根目录XML文件（软件访问根目录时自动加载）
+          cp gh-pages/xml/112114.xml gh-pages/index.xml
+          
+          # 创建智能根目录入口，完全兼容原workers逻辑
           cat > gh-pages/index.html << 'EOF'
           <!DOCTYPE html>
-          <html lang="zh-CN">
+          <html>
           <head>
               <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>EPG 节目表</title>
-              <style>
-                  body { font-family: Arial, sans-serif; margin: 40px; }
-                  .container { max-width: 800px; margin: 0 auto; }
-                  .logo { text-align: center; margin: 20px 0; }
-                  .logo img { max-width: 200px; height: auto; }
-                  .section { margin: 30px 0; }
-                  .section h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-                  .section p { line-height: 1.6; }
-                  .update-time { color: #666; font-size: 14px; }
-              </style>
+              <title>EPG API</title>
           </head>
           <body>
-              <div class="container">
-                  <div class="logo">
-                      <h1>EPG 节目表</h1>
-                      <p class="update-time">自动更新于: ${{ env.now_time || '未知' }}</p>
-                  </div>
+          <script>
+          // EPG API - 完全兼容原Cloudflare Workers
+          const Config = {
+              repository: '${{ github.repository }}',
+              branch: '112114'
+          };
+
+          function getNowDate() {
+              const utc_timestamp = (new Date()).getTime();
+              const china_time = new Date(utc_timestamp + 8 * 60 * 60 * 1000);
+              const month = china_time.getMonth() + 1;
+              const day = china_time.getDate();
+              return `${china_time.getFullYear()}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
+          }
+
+          function getFormatTime(time) {
+              let result = {
+                  date: '',
+                  time: ''
+              };
+
+              if (time.length < 8) {
+                  result['date'] = getNowDate();
+                  return result;
+              }
+
+              let year = time.substring(0, 4);
+              let month = time.substring(4, 6);
+              let day = time.substring(6, 8);
+              result['date'] = year + '-' + month + '-' + day;
+
+              if (time.length >= 12) {
+                  let hour = time.substring(8, 10);
+                  let minute = time.substring(10, 12);
+                  result['time'] = hour + ':' + minute;
+              }
+              return result;
+          }
+
+          async function diypHandle(channel, date) {
+              try {
+                  const response = await fetch('./json/112114.json');
+                  const data = await response.json();
+
+                  const program_info = {
+                      "date": date,
+                      "channel_name": channel,
+                      "url": `https://github.com/${Config.repository}`,
+                      "epg_data": []
+                  };
+
+                  data.forEach(function (element) {
+                      if (element['@channel'] === channel && element['@start'].startsWith(date.replaceAll('-', ''))) {
+                          program_info['epg_data'].push({
+                              "start": getFormatTime(element['@start'])['time'],
+                              "end": getFormatTime(element['@stop'])['time'],
+                              "title": element['title']['#text'],
+                              "desc": (element['desc'] && element['desc']['#text']) ? element['desc']['#text'] : ''
+                          });
+                      }
+                  });
+
+                  if (program_info['epg_data'].length === 0) {
+                      program_info['epg_data'].push({
+                          "start": "00:00",
+                          "end": "23:59",
+                          "title": "未知节目",
+                          "desc": ""
+                      });
+                  }
+                  return program_info;
+              } catch (error) {
+                  return {
+                      "date": date,
+                      "channel_name": channel,
+                      "url": `https://github.com/${Config.repository}`,
+                      "epg_data": [{
+                          "start": "00:00",
+                          "end": "23:59",
+                          "title": "未知节目",
+                          "desc": ""
+                      }]
+                  };
+              }
+          }
+
+          // 处理请求，完全兼容原workers逻辑
+          async function handleRequest() {
+              const url = new URL(window.location.href);
+              const channel = url.searchParams.get("ch");
+              
+              if (!channel || channel.length === 0) {
+                  // 无ch参数，返回XML格式（兼容原workers逻辑）
+                  try {
+                      const response = await fetch('./xml/112114.xml');
+                      const xmlText = await response.text();
+                      
+                      // 设置XML内容类型
+                      document.contentType = 'text/xml';
+                      
+                      // 如果是软件请求，直接返回XML内容
+                      if (navigator.userAgent.includes('Diyp') || navigator.userAgent.includes('百川') || 
+                          navigator.userAgent.includes('EPG') || navigator.userAgent.includes('TV')) {
+                          // 软件请求，直接显示XML内容
+                          document.body.innerHTML = xmlText;
+                      } else {
+                          // 浏览器请求，显示信息页面
+                          document.body.innerHTML = '<h1>EPG API</h1><p>XML格式EPG数据已加载</p><pre>' + xmlText.substring(0, 500) + '...</pre>';
+                      }
+                  } catch (error) {
+                      document.body.innerHTML = 'XML file not found';
+                  }
+                  return;
+              }
+
+              // 有ch参数，返回JSON格式（兼容原workers逻辑）
+              let date = url.searchParams.get("date");
+              if (date) {
+                  date = getFormatTime(date.replace(/\D+/g, ''))['date'];
+              } else {
+                  date = getNowDate();
+              }
+
+              const channelUpper = channel.replaceAll('-', '').toUpperCase();
+              if (parseInt(date.replaceAll('-', '')) >= 20240214) {
+                  const result = await diypHandle(channelUpper, date);
                   
-                  <div class="section">
-                      <h2>关于本项目</h2>
-                      <p>这是一个EPG（电子节目指南）数据项目，提供电视节目的时间表信息。</p>
-                      <p>数据来源：<a href="https://github.com/sparkssssssssss/epg" target="_blank">sparks/epg</a></p>
-                      <p>本项目将2024年2月14日（含）以后的数据备份，并提供静态文件访问。</p>
-                  </div>
+                  // 设置JSON内容类型
+                  document.contentType = 'application/json';
                   
-                  <div class="section">
-                      <h2>数据文件</h2>
-                      <p>EPG数据以XML和JSON格式提供，可通过以下方式访问：</p>
-                      <ul>
-                          <li><strong>XML格式</strong>：适用于传统EPG客户端</li>
-                          <li><strong>JSON格式</strong>：适用于现代Web应用和移动端</li>
-                      </ul>
-                  </div>
+                  // 如果是软件请求，直接返回JSON内容
+                  if (navigator.userAgent.includes('Diyp') || navigator.userAgent.includes('百川') || 
+                      navigator.userAgent.includes('EPG') || navigator.userAgent.includes('TV')) {
+                      document.body.innerHTML = JSON.stringify(result);
+                  } else {
+                      document.body.innerHTML = '<h1>EPG API</h1><p>JSON格式EPG数据已加载</p><pre>' + JSON.stringify(result, null, 2) + '</pre>';
+                  }
+              } else {
+                  const result = {
+                      "date": date,
+                      "channel_name": channelUpper,
+                      "url": `https://github.com/${Config.repository}`,
+                      "epg_data": [{
+                          "start": "00:00",
+                          "end": "23:59",
+                          "title": "未知节目",
+                          "desc": ""
+                      }]
+                  };
                   
-                  <div class="section">
-                      <h2>频道图标</h2>
-                      <p>logo目录包含各频道的图标文件，可用于EPG客户端的美化显示。</p>
-                  </div>
+                  // 设置JSON内容类型
+                  document.contentType = 'application/json';
                   
-                  <div class="section">
-                      <h2>使用说明</h2>
-                      <p>如需获取特定频道和日期的节目信息，请参考项目README中的API使用说明。</p>
-                      <p>项目地址：<a href="https://github.com/${{ github.repository }}" target="_blank">GitHub Repository</a></p>
-                  </div>
-              </div>
+                  // 如果是软件请求，直接返回JSON内容
+                  if (navigator.userAgent.includes('Diyp') || navigator.userAgent.includes('百川') || 
+                      navigator.userAgent.includes('EPG') || navigator.userAgent.includes('TV')) {
+                      document.body.innerHTML = JSON.stringify(result);
+                  } else {
+                      document.body.innerHTML = '<h1>EPG API</h1><p>JSON格式EPG数据已加载</p><pre>' + JSON.stringify(result, null, 2) + '</pre>';
+                  }
+              }
+          }
+
+          // 页面加载时自动处理
+          if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', handleRequest);
+          } else {
+              handleRequest();
+          }
+          </script>
           </body>
           </html>
+          EOF
+          
+          # 创建简单的README文件
+          cat > gh-pages/README.md << 'EOF'
+          # EPG 节目表静态文件
+          
+          这是一个EPG（电子节目指南）数据项目，提供电视节目的时间表信息。
+          
+          ## 文件结构
+          
+          - `index.html` - 智能根目录入口，完全兼容原Cloudflare Workers逻辑
+          - `index.xml` - 备用XML文件
+          - `xml/112114.xml` - 完整的XML格式EPG数据
+          - `json/112114.json` - 完整的JSON格式EPG数据  
+          - `logo/` - 频道图标文件
+          
+          ## 使用方法
+          
+          ### 完全兼容原Workers接口
+          
+          **XML格式（传统EPG客户端）**：
+          - 访问根目录：`https://your-domain.com/`
+          - 无查询参数
+          - 自动返回XML格式EPG数据
+          
+          **JSON格式（现代软件）**：
+          - 访问：`https://your-domain.com/?ch=频道名`
+          - 示例：`https://your-domain.com/?ch=CCTV1`
+          - 特定日期：`https://your-domain.com/?ch=CCTV1&date=2024-02-14`
+          
+          ## 软件配置说明
+          
+          **Diyp & 百川等软件配置**：
+          - EPG服务器地址：`https://your-domain.com`
+          - 软件会自动访问根目录获得XML数据
+          - 或者通过查询参数获得特定频道的JSON数据
+          
+          ## 数据来源
+          
+          数据来自 [sparks/epg](https://github.com/sparkssssssssss/epg)
           EOF
           
       - name: Deploy to gh-pages branch
