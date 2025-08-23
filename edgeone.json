@@ -1,0 +1,38 @@
+{
+  "index": "index.xml",
+  "error_page": "index.xml",
+  "routes": [
+    {
+      "pattern": "/",
+      "serve": "index.xml",
+      "headers": {
+        "Content-Type": "text/xml; charset=utf-8"
+      }
+    },
+    {
+      "pattern": "/index.xml",
+      "serve": "index.xml",
+      "headers": {
+        "Content-Type": "text/xml; charset=utf-8"
+      }
+    },
+    {
+      "pattern": "/xml/*",
+      "serve": "/xml/*",
+      "headers": {
+        "Content-Type": "text/xml; charset=utf-8"
+      }
+    },
+    {
+      "pattern": "/json/*",
+      "serve": "/json/*",
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      }
+    },
+    {
+      "pattern": "/logo/*",
+      "serve": "/logo/*"
+    }
+  ]
+} 
