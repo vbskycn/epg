@@ -46,6 +46,9 @@ jobs:
             echo "now_time=$now_time" >> $GITHUB_ENV
             tag=$(date -u -d '+8 hour' '+%Y.%m.%d')
             echo "tag=$tag" >> $GITHUB_ENV
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_updates=false" >> $GITHUB_OUTPUT
           fi
 
       - name: checkout code
@@ -101,3 +104,94 @@ jobs:
           git add --all
           git commit -m "${{ env.now_time }}"
           git push -f origin ${{ matrix.branch }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ needs.build.outputs.has_updates == 'true' }}
+    permissions:
+      pages: write
+      id-token: write
+    # GitHub Pages deployment
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Prepare static files
+        run: |
+          mkdir -p public
+          # 复制logo目录
+          cp -r logo public/
+          # 复制XML和JSON文件（如果存在）
+          if [ -d "xml" ]; then
+            cp -r xml public/
+          fi
+          if [ -d "json" ]; then
+            cp -r json public/
+          fi
+          # 创建简单的HTML索引页面
+          cat > public/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>EPG 节目表</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+                  .container { max-width: 800px; margin: 0 auto; }
+                  .logo { text-align: center; margin: 20px 0; }
+                  .logo img { max-width: 200px; height: auto; }
+                  .section { margin: 30px 0; }
+                  .section h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+                  .section p { line-height: 1.6; }
+                  .update-time { color: #666; font-size: 14px; }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <div class="logo">
+                      <h1>EPG 节目表</h1>
+                      <p class="update-time">自动更新于: ${{ env.now_time || '未知' }}</p>
+                  </div>
+                  
+                  <div class="section">
+                      <h2>关于本项目</h2>
+                      <p>这是一个EPG（电子节目指南）数据项目，提供电视节目的时间表信息。</p>
+                      <p>数据来源：<a href="https://github.com/sparkssssssssss/epg" target="_blank">sparks/epg</a></p>
+                      <p>本项目将2024年2月14日（含）以后的数据备份，并提供静态文件访问。</p>
+                  </div>
+                  
+                  <div class="section">
+                      <h2>数据文件</h2>
+                      <p>EPG数据以XML和JSON格式提供，可通过以下方式访问：</p>
+                      <ul>
+                          <li><strong>XML格式</strong>：适用于传统EPG客户端</li>
+                          <li><strong>JSON格式</strong>：适用于现代Web应用和移动端</li>
+                      </ul>
+                  </div>
+                  
+                  <div class="section">
+                      <h2>频道图标</h2>
+                      <p>logo目录包含各频道的图标文件，可用于EPG客户端的美化显示。</p>
+                  </div>
+                  
+                  <div class="section">
+                      <h2>使用说明</h2>
+                      <p>如需获取特定频道和日期的节目信息，请参考项目README中的API使用说明。</p>
+                      <p>项目地址：<a href="https://github.com/${{ github.repository }}" target="_blank">GitHub Repository</a></p>
+                  </div>
+              </div>
+          </body>
+          </html>
+          EOF
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
