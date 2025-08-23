@@ -158,13 +158,13 @@ jobs:
             wget -O gh-pages/json/erw.json "https://github.com/${{ github.repository }}/releases/download/$latest_tag/erw.json" || echo "Failed to download erw.json"
           fi
           
-          # 创建根目录XML文件（软件访问根目录时自动加载）
-          cp gh-pages/xml/112114.xml gh-pages/index.xml
-          
           # 创建根目录XML文件，软件访问根目录时直接获得XML数据
           cp gh-pages/xml/112114.xml gh-pages/index.xml
           
-          # 由于静态文件无法动态处理URL参数，我们创建说明文件
+          # 为XML文件添加正确的XML标头
+          sed -i '1i<?xml version="1.0" encoding="UTF-8"?>' gh-pages/index.xml
+          
+          # 创建说明文件
           cat > gh-pages/README.md << 'EOF'
           # EPG 节目表静态文件
           
@@ -182,10 +182,12 @@ jobs:
           ### XML格式（传统EPG客户端）
           - 访问根目录：`https://your-domain.com/` 或 `https://your-domain.com/index.xml`
           - 直接返回XML格式EPG数据，无多余字符
+          - 自动设置正确的Content-Type: text/xml
           
           ### JSON格式（完整数据）
           - 访问：`https://your-domain.com/json/112114.json`
           - 返回完整的JSON格式EPG数据
+          - 自动设置正确的Content-Type: application/json
           
           ## 软件配置说明
           
@@ -193,50 +195,14 @@ jobs:
           - EPG服务器地址：`https://your-domain.com`
           - 软件访问根目录时直接获得纯XML数据
           - 无HTML包装，无多余字符
+          - 自动识别为XML格式
           
-          ## 重要说明
+          ## 腾讯Pages配置
           
-          由于静态文件无法像Cloudflare Workers那样动态处理URL参数，
-          如需特定频道的JSON数据，请直接访问 `./json/112114.json` 获取完整数据。
-          
-          ## 数据来源
-          
-          数据来自 [sparks/epg](https://github.com/sparkssssssssss/epg)
-          EOF
-          
-          # 创建简单的README文件
-          cat > gh-pages/README.md << 'EOF'
-          # EPG 节目表静态文件
-          
-          这是一个EPG（电子节目指南）数据项目，提供电视节目的时间表信息。
-          
-          ## 文件结构
-          
-          - `index.html` - 智能根目录入口，完全兼容原Cloudflare Workers逻辑
-          - `xml/112114.xml` - 完整的XML格式EPG数据
-          - `json/112114.json` - 完整的JSON格式EPG数据  
-          - `logo/` - 频道图标文件
-          
-          ## 使用方法
-          
-          ### 完全兼容原Workers接口
-          
-          **XML格式（传统EPG客户端）**：
-          - 访问根目录：`https://your-domain.com/`
-          - 无查询参数
-          - 自动返回XML格式EPG数据
-          
-          **JSON格式（特定频道）**：
-          - 访问：`https://your-domain.com/?ch=频道名`
-          - 示例：`https://your-domain.com/?ch=CCTV1`
-          - 特定日期：`https://your-domain.com/?ch=CCTV1&date=2024-02-14`
-          
-          ## 软件配置说明
-          
-          **Diyp & 百川等软件配置**：
-          - EPG服务器地址：`https://your-domain.com`
-          - 软件访问根目录时自动获得XML数据
-          - 通过查询参数获得特定频道的JSON数据
+          `edgeone.json` 文件配置了：
+          - 首页文件：`index.xml`
+          - 自动设置正确的Content-Type头
+          - 路由规则确保文件正确访问
           
           ## 数据来源
           
@@ -262,8 +228,11 @@ jobs:
           # 清空所有文件（保留.git目录）
           find . -mindepth 1 -not -path './.git*' -not -path './gh-pages*' -delete
           
-          # 复制新文件到当前目录
-          cp -r gh-pages/* .
+          # 复制新文件到当前目录（不复制gh-pages目录本身）
+          cp -r gh-pages/* . 2>/dev/null || true
+          
+          # 确保没有重复的gh-pages目录
+          rm -rf gh-pages
           
           # 添加所有文件
           git add --all
