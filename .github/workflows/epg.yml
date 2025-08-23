@@ -225,12 +225,14 @@ jobs:
           # 强制删除gh-pages分支（如果存在）
           git push origin --delete gh-pages || echo "Branch gh-pages does not exist or already deleted"
           
+          # 等待一下确保删除操作完成
+          sleep 2
+          
           # 创建新的gh-pages分支
           git checkout -b gh-pages
           
-          # 清空所有文件（包括隐藏文件）
-          git rm -rf . || true
-          rm -rf .* || true
+          # 清空所有文件（保留.git目录）
+          find . -mindepth 1 -not -path './.git*' -not -path './gh-pages*' -delete
           
           # 复制新文件到当前目录
           cp -r gh-pages/* .
